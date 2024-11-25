@@ -10,28 +10,21 @@
     <div x-data="{folders: [], files: [], stack: [{id: 'root', name: 'root'}]}" class="grid grid-cols-12">
         <div class="col-span-2 p-2">
             <!-- Seach files-->
-            <div>
+            <!-- <div>
                 <input type="text" id="search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Search any file..." />
-            </div>
+            </div> -->
 
             <!-- RootFolders -->
             <div class="flex flex-col gap-2 font-bold text-xl mt-6 p-2">
                 <p>Wellcome! <a class="hover:underline underline-offset-1 cursor-pointer" onclick="logout()">Exit?</a></p>
 
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-folder"></i>
-                    <p>Favourites</p>
-                </div>
-
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-folder"></i>
-                    <p>Favourites</p>
-                </div>
-
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-folder"></i>
-                    <p>Favourites</p>
-                </div>
+                <!-- Loop in root folders -->
+                <template x-for="folder in folders" :key="folder.id">
+                    <div @click="folders = await callFolder(folder.id); files = await callFiles(folder.id) ; stack = addStack(stack, folder.name, folder.id)" class="flex items-center gap-2 cursor-pointer hover:underline">
+                        <i class="fa-solid fa-folder"></i>
+                        <p x-text="folder.name"></p>
+                    </div>
+                </template>
             </div>
         </div>
         <div class="col-span-10 p-2">
@@ -175,21 +168,44 @@
     async function renderFile(file_id) {
         try {
             let response = await fetch(`${serverIp}/files?file_id=${file_id}&render=true`, {
-                method: 'GET',
-                headers: getHeaders()
+            method: 'GET',
+            headers: getHeaders()
             });
 
             if (!response.ok) {
-                throw new Error(`Error fetching file: ${response.status} ${response.statusText}`);
+            throw new Error(`Error fetching file: ${response.status} ${response.statusText}`);
             }
 
             const buffer = await response.arrayBuffer();
             const base64Data = btoa(String.fromCharCode(...new Uint8Array(buffer)));
             const dataUrl = `data:${response.headers.get('Content-Type') || 'text/plain'};base64,${base64Data}`;
+
             window.open(dataUrl, '_blank');
 
         } catch (error) {
             console.error('Error rendering file:', error);
+
+            try {
+                let response = await fetch(`${serverIp}/files?file_id=${file_id}&render=true`, {
+                    method: 'GET',
+                    headers: getHeaders()
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error fetching file: ${response.status} ${response.statusText}`);
+                }
+
+                const buffer = await response.arrayBuffer();
+                const blob = new Blob([buffer], { type: response.headers.get('Content-Type') });
+                const blobUrl = URL.createObjectURL(blob);
+
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = 'file';
+                link.click();
+            } catch (error) {
+                console.error('Error downloading file:', error);
+            }
         }
     }
 </script>
